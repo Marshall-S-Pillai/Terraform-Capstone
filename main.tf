@@ -55,7 +55,6 @@ resource "aws_security_group" "web" {
   name        = "${var.project_name}-${var.environment}-web"
   description = "HTTP access and SSH restricted to the operator IP."
   vpc_id      = aws_vpc.main.id
-
   ingress {
     description = "SSH from operator IP only"
     from_port   = 22
@@ -82,21 +81,18 @@ resource "aws_security_group" "web" {
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "~> 5.7"
-
   name                        = "${var.project_name}-${var.environment}-web"
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.web.id]
   associate_public_ip_address = true
-
   user_data = <<-EOF
     #!/bin/bash
     dnf install -y httpd
     systemctl enable --now httpd
     echo "Terraform Capstone - ${var.environment}" > /var/www/html/index.html
   EOF
-
   tags = {
     Environment = var.environment
     Project     = var.project_name
@@ -112,12 +108,16 @@ resource "aws_s3_bucket" "application" {
 }
 resource "aws_s3_bucket_versioning" "application" {
   bucket = aws_s3_bucket.application.id
-  versioning_configuration { status = "Enabled" }
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 resource "aws_s3_bucket_server_side_encryption_configuration" "application" {
   bucket = aws_s3_bucket.application.id
   rule {
-    apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
   }
 }
 resource "aws_s3_bucket_public_access_block" "application" {
