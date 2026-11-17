@@ -1,0 +1,42 @@
+name: Terraform Checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Workspace to validate and plan
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Terraform format
+        run: terraform fmt -check -recursive
+      - name: Terraform init
+        run: terraform init
+      - name: Terraform validate
+        run: terraform validate
+      - name: Select workspace
+        run: terraform workspace select "${{ inputs.environment }}" || terraform workspace new "${{ inputs.environment }}"
+      - name: Terraform plan
+        run: terraform plan -var="environment=${{ inputs.environment }}" -out=tfplan
