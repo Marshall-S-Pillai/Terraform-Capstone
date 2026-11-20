@@ -2,7 +2,7 @@
 # Replace the placeholder with your globally unique bucket name.
 terraform {
   backend "s3" {
-    bucket       = "REPLACE_WITH_YOUR_TF_STATE_BUCKET"
+    bucket       = "powertool2030"
     key          = "terraform-capstone/terraform.tfstate"
     region       = "us-east-1"
     encrypt      = true
