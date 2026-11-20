@@ -75,15 +75,15 @@ resource "aws_security_group" "web" {
 }
 
 module "ec2_instance" {
-  source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "~> 5.7"
+  source                      = "terraform-aws-modules/ec2-instance/aws"
+  version                     = "~> 5.7"
   name                        = "${var.project_name}-${var.environment}-web"
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.web.id]
   associate_public_ip_address = true
-  user_data = <<-EOF
+  user_data                   = <<-EOF
     #!/bin/bash
     dnf install -y httpd
     systemctl enable --now httpd
