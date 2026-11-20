@@ -1,10 +1,12 @@
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
+
   filter {
     name   = "name"
     values = ["al2023-ami-2023.*-x86_64"]
   }
+
   filter {
     name   = "architecture"
     values = ["x86_64"]
@@ -15,6 +17,7 @@ resource "aws_vpc" "main" {
   cidr_block           = "10.30.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
+
   tags = {
     Name        = "${var.project_name}-${var.environment}-vpc"
     Environment = var.environment
@@ -23,7 +26,8 @@ resource "aws_vpc" "main" {
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "${var.project_name}-${var.environment}-igw" }
+
+  tags = { Name = "${var.project_name}-${var.environment}-igw" }
 }
 
 resource "aws_subnet" "public" {
@@ -31,11 +35,13 @@ resource "aws_subnet" "public" {
   cidr_block              = "10.30.1.0/24"
   availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
+
   tags = { Name = "${var.project_name}-${var.environment}-public" }
 }
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
@@ -51,6 +57,7 @@ resource "aws_security_group" "web" {
   name        = "${var.project_name}-${var.environment}-web"
   description = "HTTP access and SSH restricted to the operator IP."
   vpc_id      = aws_vpc.main.id
+
   ingress {
     description = "SSH from operator IP only"
     from_port   = 22
@@ -58,6 +65,7 @@ resource "aws_security_group" "web" {
     protocol    = "tcp"
     cidr_blocks = [var.allowed_ssh_cidr]
   }
+
   ingress {
     description = "HTTP demo"
     from_port   = 80
@@ -65,12 +73,14 @@ resource "aws_security_group" "web" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = { Name = "${var.project_name}-${var.environment}-web" }
 }
 
@@ -89,6 +99,7 @@ module "ec2_instance" {
     systemctl enable --now httpd
     echo "Terraform Capstone - ${var.environment}" > /var/www/html/index.html
   EOF
+
   tags = {
     Environment = var.environment
     Project     = var.project_name
