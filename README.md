@@ -1,6 +1,6 @@
 # Terraform Capstone — AWS Infrastructure
 
-A clean Terraform project demonstrating AWS infrastructure provisioning, remote state, Registry modules, workspaces, variables, outputs, and CI validation.
+A Terraform project demonstrating AWS infrastructure provisioning, remote state, Registry modules, workspaces, variables, outputs, and GitHub Actions.
 
 ## Architecture
 
@@ -8,27 +8,20 @@ A clean Terraform project demonstrating AWS infrastructure provisioning, remote 
 - Public subnet with Internet Gateway and default route
 - Security group: HTTP/80 public; SSH/22 restricted to your configured IP CIDR
 - EC2: Amazon Linux 2023, created through the Terraform Registry module `terraform-aws-modules/ec2-instance/aws`
-- S3 application bucket: versioning, AES256 encryption, and public-access blocking
-- S3 remote backend with native lockfile support
+- Terraform remote state stored in a manually created S3 bucket
 
 ## Prerequisites
 
 - Terraform >= 1.5
 - AWS CLI configured with credentials/role that can manage the resources
-- A dedicated S3 bucket for Terraform state
+- A dedicated S3 bucket for Terraform state, created manually
+- GitHub repository secrets: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
 
-## Bootstrap remote state
+## Remote state bucket
 
-The backend bucket must exist before `terraform init`. Create a globally unique bucket in us-east-1, enable versioning, and block public access. Replace the placeholder bucket in `backend.tf`. Keep this state bucket separate from the application bucket managed by this project.
+Create your S3 bucket manually before running Terraform. Update the bucket name in `backend.tf` to your bucket name. Enable versioning and block public access on the bucket. This bucket is used only for Terraform state; Terraform does not create or destroy it.
 
-Example:
-```bash
-aws s3api create-bucket --bucket YOUR-UNIQUE-STATE-BUCKET --region us-east-1
-aws s3api put-bucket-versioning --bucket YOUR-UNIQUE-STATE-BUCKET --versioning-configuration Status=Enabled
-aws s3api put-public-access-block --bucket YOUR-UNIQUE-STATE-BUCKET --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-```
-
-## Deploy
+## Local deployment
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -36,23 +29,17 @@ cp terraform.tfvars.example terraform.tfvars
 terraform fmt -recursive
 terraform init
 terraform validate
-terraform workspace new dev   # if it does not exist; otherwise select dev
-terraform workspace select dev
-terraform plan -out=tfplan
-terraform apply tfplan
-terraform output
+terraform workspace select dev || terraform workspace new dev
+terraform plan -var="environment=dev"
+terraform apply -var="environment=dev"
 ```
-
-For production, select/create the `prod` workspace. Terraform's S3 backend stores non-default workspaces under its workspace key prefix. Review each plan carefully before applying.
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/terraform.yml` runs fmt, init, validate, workspace selection, and plan on manual dispatch. Configure the repository secret `AWS_ROLE_ARN` for GitHub OIDC and configure the role trust policy for this repository. The workflow does not auto-apply infrastructure.
+Two manually triggered workflows are available under Actions:
 
-## Cleanup
+- `Terraform Create`: selects dev or prod, validates, plans, and applies infrastructure.
+- `Terraform Destroy`: selects dev or prod and destroys resources in that workspace.
 
-Run `terraform destroy` from the intended workspace after reviewing the plan. Empty the application bucket first. Do not delete the remote state bucket until all state is safely retired.
+Configure the repository secrets `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. The S3 state bucket must already exist and its name must be configured in `backend.tf`.
 
-## Submission evidence
-
-Capture terminal screenshots for init, fmt, validate, workspace list, plan, apply and outputs; capture AWS console screenshots for EC2, VPC, and S3 resources. A successful code commit alone does not prove a live deployment.
